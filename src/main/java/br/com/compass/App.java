@@ -59,28 +59,28 @@ public class App {
 
         String name = "", birthDate = "", cpf = "", phone = "";
         boolean confirmed = false;
+        scanner.nextLine();
 
         while (!confirmed) {
         	while (true) {
         	    System.out.print("Enter Name (2-100 characters, no numbers): ");
-        	    name = scanner.nextLine().trim(); // Captura a entrada do usuário
+        	    name = scanner.nextLine().trim(); 
 
         	    if (name.isEmpty()) {
         	        System.out.println("Name is required. Please enter a valid name.");
-        	        continue; // Repete a solicitação
+        	        continue;
         	    }
 
         	    if (!name.matches("^[a-zA-Z\\s]+$")) {
         	        System.out.println("Name must not contain numbers. Please enter a valid name.");
-        	        continue; // Repete a solicitação
+        	        continue; 
         	    }
 
         	    if (name.length() < 2 || name.length() > 100) {
         	        System.out.println("Name must be between 2 and 100 characters.");
-        	        continue; // Repete a solicitação
+        	        continue; 
         	    }
-
-        	    // Nome válido
+        	    
         	    break;
         	}
 
