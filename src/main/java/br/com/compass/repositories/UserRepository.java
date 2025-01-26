@@ -10,19 +10,12 @@ public class UserRepository {
     private List<User> users = new ArrayList<>();
 
     public void save(User user) {
-        user.setId((long) (users.size() + 1));  // Gera um ID único
         users.add(user);
     }
 
-    public Optional<User> findById(Long id) {
-        return users.stream().filter(user -> user.getId().equals(id)).findFirst();
-    }
-
     public Optional<User> findByCpf(String cpf) {
-        return users.stream().filter(user -> user.getCpf().equals(cpf)).findFirst();
-    }
-
-    public List<User> findAll() {
-        return users;
+        return users.stream()
+                .filter(user -> user.getCpf().equals(cpf))
+                .findFirst();
     }
 }

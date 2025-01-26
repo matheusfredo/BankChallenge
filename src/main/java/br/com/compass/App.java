@@ -36,11 +36,11 @@ public class App {
 
             switch (option) {
                 case 1:
-                    bankMenu(scanner);
+                	 login(scanner);
                     return;
                 case 2:
                 	accountOpening(scanner);
-                    System.out.println("Account Opening.");
+                    System.out.println("\nAccount Opening.\n");
                     break;
                 case 0:
                     running = false;
@@ -55,76 +55,22 @@ public class App {
         UserService userService = new UserService();
         AccountService accountService = new AccountService();
 
-        System.out.println("=== Account Opening ===");
+        System.out.println("\n========= Account Opening =========");
 
-        String name = "", birthDate = "", cpf = "", phone = "";
+        String name = "", birthDate = "", cpf = "", phone = "", password = "";
         boolean confirmed = false;
-        scanner.nextLine();
+
+        scanner.nextLine(); 
 
         while (!confirmed) {
-        	while (true) {
-        	    System.out.print("Enter Name (2-100 characters, no numbers): ");
-        	    name = scanner.nextLine().trim(); 
+            
+            name = validateName(scanner, name);
 
-        	    if (name.isEmpty()) {
-        	        System.out.println("Name is required. Please enter a valid name.");
-        	        continue;
-        	    }
+            birthDate = validateBirthDate(scanner, birthDate);
 
-        	    if (!name.matches("^[a-zA-Z\\s]+$")) {
-        	        System.out.println("Name must not contain numbers. Please enter a valid name.");
-        	        continue; 
-        	    }
+            cpf = validateCpf(scanner, cpf);
 
-        	    if (name.length() < 2 || name.length() > 100) {
-        	        System.out.println("Name must be between 2 and 100 characters.");
-        	        continue; 
-        	    }
-        	    
-        	    break;
-        	}
-
-            if (birthDate.isEmpty()) {
-                while (true) {
-                    System.out.print("Enter Birth Date (dd-mm-yyyy): ");
-                    birthDate = scanner.nextLine();
-                    try {
-                        LocalDate date = LocalDate.parse(birthDate, DateTimeFormatter.ofPattern("dd-MM-yyyy"));
-                        LocalDate today = LocalDate.now();
-                        if (date.isBefore(LocalDate.of(1900, 1, 1)) || date.isAfter(today.minusYears(18))) {
-                            System.out.println("You must be at least 18 years old to open an account. Returning to the main menu...");
-                            return; 
-                        }
-                        break;
-                    } catch (DateTimeParseException e) {
-                        System.out.println("Invalid date format. Please enter the date as dd-mm-yyyy.");
-                    }
-                }
-            }
-
-            if (cpf.isEmpty()) {
-                while (true) {
-                    System.out.print("Enter CPF (numbers only): ");
-                    cpf = scanner.nextLine().replaceAll("[^0-9]", "");
-                    if (isValidCpf(cpf)) {
-                        break;
-                    } else {
-                        System.out.println("Invalid CPF. Please enter a valid CPF.");
-                    }
-                }
-            }
-
-            if (phone.isEmpty()) {
-                while (true) {
-                    System.out.print("Enter Phone (DDD + 9 digits): ");
-                    phone = scanner.nextLine().replaceAll("[^0-9]", "");
-                    if (phone.length() == 11) {
-                        break; 
-                    } else {
-                        System.out.println("Phone number must contain exactly 11 digits.");
-                    }
-                }
-            }
+            phone = validatePhone(scanner, phone);
 
             System.out.println("\nReview your details:");
             System.out.println("1. Name: " + name);
@@ -135,26 +81,17 @@ public class App {
             String choice = scanner.nextLine().toLowerCase();
 
             if (choice.equals("s")) {
-                confirmed = true;
+                confirmed = true; 
             } else if (choice.equals("n")) {
                 System.out.print("Enter the number of the field you want to edit (1-4): ");
                 int field = scanner.nextInt();
                 scanner.nextLine(); 
                 switch (field) {
-                    case 1:
-                        name = ""; 
-                        break;
-                    case 2:
-                        birthDate = ""; 
-                        break;
-                    case 3:
-                        cpf = ""; 
-                        break;
-                    case 4:
-                        phone = ""; 
-                        break;
-                    default:
-                        System.out.println("Invalid option. Returning to review...");
+                    case 1 -> name = "";
+                    case 2 -> birthDate = "";
+                    case 3 -> cpf = "";
+                    case 4 -> phone = "";
+                    default -> System.out.println("Invalid option. Returning to review...");
                 }
             } else {
                 System.out.println("Invalid input. Returning to review...");
@@ -162,43 +99,150 @@ public class App {
         }
 
         User user = new User(null, name, cpf, LocalDate.parse(birthDate, DateTimeFormatter.ofPattern("dd-MM-yyyy")), phone);
+
         if (!userService.registerUser(user)) {
             System.out.println("A user with this CPF already exists. Returning to the main menu...");
             return;
         }
 
-        System.out.println("Choose Account Type:");
-        System.out.println("1. Checking Account");
-        System.out.println("2. Salary Account");
-        System.out.println("3. Savings Account");
-        System.out.print("Enter option (1-3): ");
-        int accountOption = scanner.nextInt();
-        scanner.nextLine(); 
+        while (true) {
+            System.out.print("Enter a 6-digit password (numbers only, no repeated digits): ");
+            password = scanner.nextLine().replaceAll("[^0-9]", ""); // Remove formatação
+            if (password.length() != 6 || hasRepeatedDigits(password)) {
+                System.out.println("Invalid password. It must be 6 digits with no repeated numbers.");
+                continue;
+            }
 
-        String accountType;
-        switch (accountOption) {
-            case 1:
-                accountType = "Checking Account";
+            System.out.print("Confirm your password: ");
+            String confirmPassword = scanner.nextLine().replaceAll("[^0-9]", "");
+            if (!password.equals(confirmPassword)) {
+                System.out.println("Passwords do not match. Please try again.");
+            } else {
                 break;
-            case 2:
-                accountType = "Salary Account";
-                break;
-            case 3:
-                accountType = "Savings Account";
-                break;
-            default:
-                System.out.println("Invalid option. Defaulting to Checking Account.");
-                accountType = "Checking Account";
+            }
         }
 
-        Account account = accountService.openAccount(user.getId(), accountType);
+        user.setPassword(password);
+
+        String accountType = selectAccountType(scanner);
+
+        Account account = accountService.openAccount(cpf, accountType);
 
         System.out.println("\nAccount created successfully!");
-        System.out.println("User ID: " + user.getId());
+        System.out.println("Use your CPF to log in: " + cpf);
         System.out.println("Account ID: " + account.getId());
         System.out.println("Account Type: " + account.getAccountType());
+    }	
+
+    private static boolean hasRepeatedDigits(String password) {
+        for (int i = 0; i < password.length(); i++) {
+            for (int j = i + 1; j < password.length(); j++) {
+                if (password.charAt(i) == password.charAt(j)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
+
+    private static String validateName(Scanner scanner, String name) {
+        while (name.isEmpty()) {
+            System.out.print("Enter Name: ");
+            name = scanner.nextLine().trim();
+            if (name.isEmpty()) {
+                System.out.println("Name is required. Please enter a valid name.");
+            } else if (!name.matches("^[a-zA-Z\\s]+$")) {
+                System.out.println("Name must not contain numbers. Please enter a valid name.");
+                name = "";
+            } else if (name.length() < 2 || name.length() > 100) {
+                System.out.println("Name must be between 2 and 100 characters.");
+                name = "";
+            }
+        }
+        return name;
+    }
+
+    private static String validateBirthDate(Scanner scanner, String birthDate) {
+        while (birthDate.isEmpty()) {
+            System.out.print("Enter Birth Date (dd-mm-yyyy): ");
+            birthDate = scanner.nextLine().trim();
+            try {
+                LocalDate date = LocalDate.parse(birthDate, DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+                LocalDate today = LocalDate.now();
+                if (date.isBefore(LocalDate.of(1900, 1, 1)) || date.isAfter(today.minusYears(18))) {
+                    System.out.println("You must be at least 18 years old to open an account.");
+                    birthDate = "";
+                }
+            } catch (DateTimeParseException e) {
+                System.out.println("Invalid date format. Please enter the date as dd-mm-yyyy.");
+                birthDate = "";
+            }
+        }
+        return birthDate;
+    }
+
+    private static String validateCpf(Scanner scanner, String cpf) {
+        while (cpf.isEmpty()) {
+            System.out.print("Enter CPF (numbers only): ");
+            cpf = scanner.nextLine().replaceAll("[^0-9]", ""); 
+            if (!isValidCpf(cpf)) {
+                System.out.println("Invalid CPF. Please enter a valid CPF.");
+                cpf = "";
+            }
+        }
+        return cpf;
+    }
+
+    private static String validatePhone(Scanner scanner, String phone) {
+        while (phone.isEmpty()) {
+            System.out.print("Enter Phone (DDD + 9 digits): ");
+            phone = scanner.nextLine().replaceAll("[^0-9]", ""); 
+            if (phone.length() != 11) {
+                System.out.println("Phone number must contain exactly 11 digits.");
+                phone = "";
+            }
+        }
+        return phone;
+    }
+
+    private static String selectAccountType(Scanner scanner) {
+        String accountType = "";
+        while (true) {
+            System.out.println("\nChoose Account Type:");
+            System.out.println("1. Checking Account");
+            System.out.println("2. Salary Account");
+            System.out.println("3. Savings Account");
+            System.out.print("Enter option (1-3): ");
+            int accountOption = scanner.nextInt();
+            scanner.nextLine();
+
+            switch (accountOption) {
+                case 1 -> accountType = "Checking Account";
+                case 2 -> accountType = "Salary Account";
+                case 3 -> accountType = "Savings Account";
+                default -> {
+                    System.out.println("Invalid option. Please select a valid account type.");
+                    continue;
+                }
+            }
+
+            System.out.println("You selected: " + accountType);
+            System.out.print("Do you confirm this account type? (s/n): ");
+            String confirmation = scanner.nextLine().toLowerCase();
+
+            if (confirmation.equals("s")) {
+                break; 
+            } else if (confirmation.equals("n")) {
+                System.out.println("Let's choose the account type again.");
+            } else {
+                System.out.println("Invalid input. Returning to account type selection.");
+            }
+        }
+        return accountType;
+    }
+
+    
     private static boolean isValidCpf(String cpf) {
         if (cpf.length() != 11 || cpf.matches("(\\d)\\1{10}")) {
             return false;
@@ -230,6 +274,39 @@ public class App {
         }
     }
 
+    public static void login(Scanner scanner) {
+        UserService userService = new UserService();
+        AccountService accountService = new AccountService();
+        boolean loggedIn = false;
+        int attempts = 0;
+
+        scanner.nextLine();
+
+        while (!loggedIn && attempts < 3) {
+            System.out.print("Enter your CPF (numbers only): ");
+            String cpf = scanner.nextLine().replaceAll("[^0-9]", ""); 
+
+            if (userService.isCpfRegistered(cpf)) {
+                System.out.print("Enter your 6-digit password: ");
+                String password = scanner.nextLine().trim();
+
+                if (userService.isPasswordValid(cpf, password)) {
+                    System.out.println("Login successful! Welcome to the bank!");
+                    loggedIn = true;
+                    bankMenu(scanner); 
+                } else {
+                    attempts++;
+                    if (attempts >= 3) {
+                        System.out.println("Too many failed attempts. Application is closing...");
+                        return; 
+                    }
+                    System.out.println("Invalid password. Attempts left: " + (3 - attempts));
+                }
+            } else {
+                System.out.println("Invalid CPF. Please try again.");
+            }
+        }
+    }
 
     
     public static void bankMenu(Scanner scanner) {
@@ -279,25 +356,5 @@ public class App {
             }
         }
     }
-    public static void registerUser(Scanner scanner) {
-        UserService userService = new UserService();
-
-        System.out.println("=== Register User ===");
-        System.out.print("Enter Name: ");
-        String name = scanner.next();
-        System.out.print("Enter CPF: ");
-        String cpf = scanner.next();
-        System.out.print("Enter Birth Date (yyyy-mm-dd): ");
-        String birthDate = scanner.next();
-        System.out.print("Enter Phone: ");
-        String phone = scanner.next();
-
-        User user = new User(null, name, cpf, java.time.LocalDate.parse(birthDate), phone);
-
-        userService.registerUser(user);
-
-        System.out.println("User registered successfully! User ID: " + user.getId());
-    }
-
     
 }
