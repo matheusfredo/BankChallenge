@@ -50,6 +50,7 @@ public class App {
             }
         }
     }
+
     
     public static void accountOpening(Scanner scanner) {
         UserService userService = new UserService();
@@ -107,7 +108,7 @@ public class App {
 
         while (true) {
             System.out.print("Enter a 6-digit password (numbers only, no repeated digits): ");
-            password = scanner.nextLine().replaceAll("[^0-9]", ""); // Remove formatação
+            password = scanner.nextLine().replaceAll("[^0-9]", ""); 
             if (password.length() != 6 || hasRepeatedDigits(password)) {
                 System.out.println("Invalid password. It must be 6 digits with no repeated numbers.");
                 continue;
@@ -130,10 +131,10 @@ public class App {
 
         System.out.println("\nAccount created successfully!");
         System.out.println("Use your CPF to log in: " + cpf);
-        System.out.println("Account ID: " + account.getId());
+        System.out.println("Account ID: " + account.getAccountNumber());
         System.out.println("Account Type: " + account.getAccountType());
     }	
-
+    
     private static boolean hasRepeatedDigits(String password) {
         for (int i = 0; i < password.length(); i++) {
             for (int j = i + 1; j < password.length(); j++) {
@@ -277,43 +278,59 @@ public class App {
     public static void login(Scanner scanner) {
         UserService userService = new UserService();
         AccountService accountService = new AccountService();
+        scanner.nextLine(); 
+
         boolean loggedIn = false;
-        int attempts = 0;
-
-        scanner.nextLine();
-
-        while (!loggedIn && attempts < 3) {
+        while (!loggedIn) {
             System.out.print("Enter your CPF (numbers only): ");
-            String cpf = scanner.nextLine().replaceAll("[^0-9]", ""); 
+            String cpf = scanner.nextLine().replaceAll("[^0-9]", "");
 
             if (userService.isCpfRegistered(cpf)) {
                 System.out.print("Enter your 6-digit password: ");
-                String password = scanner.nextLine().trim();
+                String password = scanner.nextLine();
 
                 if (userService.isPasswordValid(cpf, password)) {
-                    System.out.println("Login successful! Welcome to the bank!");
-                    loggedIn = true;
-                    bankMenu(scanner); 
+  
+                    try {
+                        var user = userService.getUserByCpf(cpf).orElseThrow(() -> new IllegalArgumentException("User not found."));
+                        var account = accountService.getAccountByCpf(cpf);
+
+                        System.out.println("\nWelcome to Bank Compass, " + user.getName() + "!");
+                        System.out.println("Account Type: " + account.getAccountType());
+                        System.out.println("Account Number: " + account.getAccountNumber());
+                        loggedIn = true;
+
+                        bankMenu(scanner, user, account);
+                    } catch (IllegalArgumentException e) {
+                        System.out.println(e.getMessage()); 
+                        System.out.println("Returning to the main menu...");
+                        return;
+                    }
                 } else {
-                    attempts++;
-                    if (attempts >= 3) {
-                        System.out.println("Too many failed attempts. Application is closing...");
+                    System.out.println("Invalid password. Would you like to try again? (y/n): ");
+                    String choice = scanner.nextLine().toLowerCase();
+
+                    if (choice.equals("n")) {
+                        System.out.println("Returning to the main menu...");
                         return; 
                     }
-                    System.out.println("Invalid password. Attempts left: " + (3 - attempts));
                 }
             } else {
-                System.out.println("Invalid CPF. Please try again.");
+                System.out.println("Invalid CPF. Would you like to try again? (y/n): ");
+                String choice = scanner.nextLine().toLowerCase();
+
+                if (choice.equals("n")) {
+                    System.out.println("Returning to the main menu...");
+                    return; 
+                }
             }
         }
     }
-
-    
-    public static void bankMenu(Scanner scanner) {
+    public static void bankMenu(Scanner scanner, User user, Account account) {
         boolean running = true;
 
         while (running) {
-            System.out.println("========= Bank Menu =========");
+            System.out.println("\n========= Bank Menu =========");
             System.out.println("|| 1. Deposit              ||");
             System.out.println("|| 2. Withdraw             ||");
             System.out.println("|| 3. Check Balance        ||");
@@ -323,38 +340,25 @@ public class App {
             System.out.println("=============================");
             System.out.print("Choose an option: ");
 
-            int option = scanner.nextInt();
+            try {
+                int option = Integer.parseInt(scanner.nextLine()); 
 
-            switch (option) {
-                case 1:
-                    // ToDo...
-                    System.out.println("Deposit.");
-                    break;
-                case 2:
-                    // ToDo...
-                    System.out.println("Withdraw.");
-                    break;
-                case 3:
-                    // ToDo...
-                    System.out.println("Check Balance.");
-                    break;
-                case 4:
-                    // ToDo...
-                    System.out.println("Transfer.");
-                    break;
-                case 5:
-                    // ToDo...
-                    System.out.println("Bank Statement.");
-                    break;
-                case 0:
-                    // ToDo...
-                    System.out.println("Exiting...");
-                    running = false;
-                    return;
-                default:
-                    System.out.println("Invalid option! Please try again.");
+                switch (option) {
+                    case 1 -> System.out.println("Deposit selected. (ToDo)");
+                    case 2 -> System.out.println("Withdraw selected. (ToDo)");
+                    case 3 -> System.out.println("Your balance is: " + account.getBalance());
+                    case 4 -> System.out.println("Transfer selected. (ToDo)");
+                    case 5 -> System.out.println("Bank Statement selected. (ToDo)");
+                    case 0 -> {
+                        System.out.println("Returning to the main menu...");
+                        return; 
+                    }
+                    default -> System.out.println("Invalid option! Please try again.");
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid input! Please enter a valid option.");
             }
         }
     }
-    
+
 }

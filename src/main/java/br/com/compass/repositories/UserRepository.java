@@ -7,7 +7,18 @@ import java.util.List;
 import java.util.Optional;
 
 public class UserRepository {
+    private static UserRepository instance; // Singleton
     private List<User> users = new ArrayList<>();
+
+    private UserRepository() {
+    }
+
+    public static UserRepository getInstance() {
+        if (instance == null) {
+            instance = new UserRepository();
+        }
+        return instance;
+    }
 
     public void save(User user) {
         users.add(user);

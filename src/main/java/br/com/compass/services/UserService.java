@@ -6,7 +6,11 @@ import br.com.compass.repositories.UserRepository;
 import java.util.Optional;
 
 public class UserService {
-    private static UserRepository userRepository = new UserRepository();
+    private static UserRepository userRepository = UserRepository.getInstance();
+
+    public Optional<User> getUserByCpf(String cpf) {
+        return userRepository.findByCpf(cpf);
+    }
 
     public boolean registerUser(User user) {
         if (isCpfRegistered(user.getCpf())) {
@@ -18,19 +22,16 @@ public class UserService {
     }
 
     public boolean isCpfRegistered(String cpf) {
-        Optional<User> existingUser = userRepository.findByCpf(cpf);
-        return existingUser.isPresent(); 
+        return userRepository.findByCpf(cpf).isPresent(); 
     }
 
     public static UserRepository getUserRepository() {
         return userRepository;
     }
-    
+
     public boolean isPasswordValid(String cpf, String password) {
         return userRepository.findByCpf(cpf)
                 .map(user -> password != null && password.equals(user.getPassword()))
                 .orElse(false);
     }
-
-
 }

@@ -7,18 +7,26 @@ import java.util.List;
 import java.util.Optional;
 
 public class AccountRepository {
+    private static AccountRepository instance; // Singleton
     private List<Account> accounts = new ArrayList<>();
 
+    private AccountRepository() {
+    }
+
+    public static AccountRepository getInstance() {
+        if (instance == null) {
+            instance = new AccountRepository();
+        }
+        return instance;
+    }
+
     public void save(Account account) {
-        account.setId((long) (accounts.size() + 1)); 
         accounts.add(account);
     }
 
-    public Optional<Account> findById(Long id) {
-        return accounts.stream().filter(account -> account.getId().equals(id)).findFirst();
-    }
-
-    public List<Account> findAll() {
-        return accounts;
+    public Optional<Account> findByUserCpf(String cpf) {
+        return accounts.stream()
+                .filter(account -> account.getUserCpf().equals(cpf))
+                .findFirst();
     }
 }
