@@ -1,12 +1,15 @@
 package br.com.compass.models;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Account {
-    private Long accountNumber; // Número único da conta
-    private String accountType; // Tipo de conta
-    private BigDecimal balance; // Saldo
-    private String userCpf; // CPF do dono da conta
+    private Long accountNumber; 
+    private String accountType; 
+    private BigDecimal balance; 
+    private String userCpf; 
+    private List<String> transactionHistory = new ArrayList<>(); 
 
     public Account(Long accountNumber, String accountType, BigDecimal balance, String userCpf) {
         this.accountNumber = accountNumber;
@@ -15,7 +18,6 @@ public class Account {
         this.userCpf = userCpf;
     }
 
-    // Getters e setters
     public Long getAccountNumber() {
         return accountNumber;
     }
@@ -46,5 +48,13 @@ public class Account {
 
     public void setUserCpf(String userCpf) {
         this.userCpf = userCpf;
+    }
+
+    public List<String> getTransactionHistory() {
+        return transactionHistory;
+    }
+
+    public void addTransaction(String transaction) {
+        this.transactionHistory.add(transaction);
     }
 }

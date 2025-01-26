@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Optional;
 
 public class UserRepository {
-    private static UserRepository instance; // Singleton
+    private static UserRepository instance; 
     private List<User> users = new ArrayList<>();
 
     private UserRepository() {

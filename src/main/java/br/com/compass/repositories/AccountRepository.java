@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Optional;
 
 public class AccountRepository {
-    private static AccountRepository instance; // Singleton
+    private static AccountRepository instance;
     private List<Account> accounts = new ArrayList<>();
 
     private AccountRepository() {
@@ -29,4 +29,10 @@ public class AccountRepository {
                 .filter(account -> account.getUserCpf().equals(cpf))
                 .findFirst();
     }
+    public Optional<Account> findByAccountNumber(Long accountNumber) {
+        return accounts.stream()
+                .filter(account -> account.getAccountNumber().equals(accountNumber))
+                .findFirst();
+    }
+
 }

@@ -1,47 +1,40 @@
 package br.com.compass.services;
 
 import br.com.compass.models.Account;
-import br.com.compass.models.Transaction;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 public class TransactionService {
 
-    public Transaction deposit(Account account, BigDecimal amount) {
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Amount must be greater than zero.");
+    public void deposit(Account account, double amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("Deposit amount must be greater than zero.");
         }
-
-        account.setBalance(account.getBalance().add(amount));
-        return new Transaction(null, "Deposit", amount, LocalDateTime.now(), null, account.getId());
+        account.setBalance(account.getBalance().add(BigDecimal.valueOf(amount)));
+        account.addTransaction("Deposited: " + amount);
     }
 
-    public Transaction withdraw(Account account, BigDecimal amount) {
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Amount must be greater than zero.");
+    public void withdraw(Account account, double amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("Withdrawal amount must be greater than zero.");
         }
-
-        if (account.getBalance().compareTo(amount) < 0) {
+        if (account.getBalance().compareTo(BigDecimal.valueOf(amount)) < 0) {
             throw new IllegalArgumentException("Insufficient balance.");
         }
-
-        account.setBalance(account.getBalance().subtract(amount));
-        return new Transaction(null, "Withdrawal", amount, LocalDateTime.now(), account.getId(), null);
+        account.setBalance(account.getBalance().subtract(BigDecimal.valueOf(amount)));
+        account.addTransaction("Withdrew: " + amount);
     }
 
-    public Transaction transfer(Account sourceAccount, Account destinationAccount, BigDecimal amount) {
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Amount must be greater than zero.");
+    public void transfer(Account sourceAccount, Account targetAccount, double amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("Transfer amount must be greater than zero.");
         }
-
-        if (sourceAccount.getBalance().compareTo(amount) < 0) {
+        if (sourceAccount.getBalance().compareTo(BigDecimal.valueOf(amount)) < 0) {
             throw new IllegalArgumentException("Insufficient balance.");
         }
-
-        sourceAccount.setBalance(sourceAccount.getBalance().subtract(amount));
-        destinationAccount.setBalance(destinationAccount.getBalance().add(amount));
-
-        return new Transaction(null, "Transfer", amount, LocalDateTime.now(), sourceAccount.getId(), destinationAccount.getId());
+        sourceAccount.setBalance(sourceAccount.getBalance().subtract(BigDecimal.valueOf(amount)));
+        targetAccount.setBalance(targetAccount.getBalance().add(BigDecimal.valueOf(amount)));
+        sourceAccount.addTransaction("Transferred " + amount + " to Account: " + targetAccount.getAccountNumber());
+        targetAccount.addTransaction("Received " + amount + " from Account: " + sourceAccount.getAccountNumber());
     }
 }

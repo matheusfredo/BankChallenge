@@ -8,6 +8,7 @@ import java.time.format.DateTimeParseException;
 import br.com.compass.models.Account;
 import br.com.compass.models.User;
 import br.com.compass.services.AccountService;
+import br.com.compass.services.TransactionService;
 import br.com.compass.services.UserService;
 
 public class App {
@@ -37,7 +38,6 @@ public class App {
             switch (option) {
                 case 1:
                 	 login(scanner);
-                    return;
                 case 2:
                 	accountOpening(scanner);
                     System.out.println("\nAccount Opening.\n");
@@ -290,7 +290,6 @@ public class App {
                 String password = scanner.nextLine();
 
                 if (userService.isPasswordValid(cpf, password)) {
-  
                     try {
                         var user = userService.getUserByCpf(cpf).orElseThrow(() -> new IllegalArgumentException("User not found."));
                         var account = accountService.getAccountByCpf(cpf);
@@ -298,13 +297,14 @@ public class App {
                         System.out.println("\nWelcome to Bank Compass, " + user.getName() + "!");
                         System.out.println("Account Type: " + account.getAccountType());
                         System.out.println("Account Number: " + account.getAccountNumber());
+
                         loggedIn = true;
 
+                        // Chama o menu do banco e volta ao mainMenu após sair
                         bankMenu(scanner, user, account);
                     } catch (IllegalArgumentException e) {
-                        System.out.println(e.getMessage()); 
+                        System.out.println(e.getMessage());
                         System.out.println("Returning to the main menu...");
-                        return;
                     }
                 } else {
                     System.out.println("Invalid password. Would you like to try again? (y/n): ");
@@ -312,7 +312,7 @@ public class App {
 
                     if (choice.equals("n")) {
                         System.out.println("Returning to the main menu...");
-                        return; 
+                        return;
                     }
                 }
             } else {
@@ -321,12 +321,15 @@ public class App {
 
                 if (choice.equals("n")) {
                     System.out.println("Returning to the main menu...");
-                    return; 
+                    return;
                 }
             }
         }
     }
+
     public static void bankMenu(Scanner scanner, User user, Account account) {
+    	AccountService accountService = new AccountService();
+        TransactionService transactionService = new TransactionService(); 
         boolean running = true;
 
         while (running) {
@@ -341,14 +344,58 @@ public class App {
             System.out.print("Choose an option: ");
 
             try {
-                int option = Integer.parseInt(scanner.nextLine()); 
+                int option = Integer.parseInt(scanner.nextLine());
 
                 switch (option) {
-                    case 1 -> System.out.println("Deposit selected. (ToDo)");
-                    case 2 -> System.out.println("Withdraw selected. (ToDo)");
+                    case 1 -> {
+                        System.out.print("Enter the amount to deposit: ");
+                        try {
+                            double amount = Double.parseDouble(scanner.nextLine());
+                            transactionService.deposit(account, amount);
+                            System.out.println("Deposit successful. New balance: " + account.getBalance());
+                        } catch (NumberFormatException e) {
+                            System.out.println("Invalid amount. Please enter a valid number.");
+                        } catch (IllegalArgumentException e) {
+                            System.out.println(e.getMessage());
+                        }
+                    }
+
+                    case 2 -> {
+                        System.out.print("Enter the amount to withdraw: ");
+                        try {
+                            double amount = Double.parseDouble(scanner.nextLine());
+                            transactionService.withdraw(account, amount);
+                            System.out.println("Withdrawal successful. New balance: " + account.getBalance());
+                        } catch (NumberFormatException e) {
+                            System.out.println("Invalid amount. Please enter a valid number.");
+                        } catch (IllegalArgumentException e) {
+                            System.out.println(e.getMessage());
+                        }
+                    }
+
                     case 3 -> System.out.println("Your balance is: " + account.getBalance());
-                    case 4 -> System.out.println("Transfer selected. (ToDo)");
-                    case 5 -> System.out.println("Bank Statement selected. (ToDo)");
+
+                    case 4 -> {
+                        System.out.print("Enter the destination account number: ");
+                        String targetAccountNumber = scanner.nextLine();
+                        System.out.print("Enter the amount to transfer: ");
+                        try {
+                            double amount = Double.parseDouble(scanner.nextLine());
+                            Account targetAccount = accountService.getAccountByNumber(targetAccountNumber);
+                            transactionService.transfer(account, targetAccount, amount);
+                            System.out.println("Transfer successful. New balance: " + account.getBalance());
+                        } catch (NumberFormatException e) {
+                            System.out.println("Invalid amount. Please enter a valid number.");
+                        } catch (IllegalArgumentException e) {
+                            System.out.println(e.getMessage());
+                        }
+                    }
+
+                    case 5 -> {
+                        System.out.println("Bank Statement:");
+                        account.getTransactionHistory().forEach(System.out::println);
+                    }
+
                     case 0 -> {
                         System.out.println("Returning to the main menu...");
                         return; 
