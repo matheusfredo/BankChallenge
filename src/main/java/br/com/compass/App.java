@@ -329,6 +329,7 @@ public class App {
     public static void bankMenu(Scanner scanner, User user, Account account) {
     	AccountService accountService = new AccountService();
         TransactionService transactionService = new TransactionService(); 
+        UserService userService = new UserService();
         boolean running = true;
 
         while (running) {
@@ -359,12 +360,20 @@ public class App {
                         }
                     }
 
-                    case 2 -> {
+                    case 2 -> { 
                         System.out.print("Enter the amount to withdraw: ");
                         try {
                             double amount = Double.parseDouble(scanner.nextLine());
-                            transactionService.withdraw(account, amount);
-                            System.out.println("Withdrawal successful. New balance: " + account.getBalance());
+                            
+                            System.out.print("Enter your password: ");
+                            String password = scanner.nextLine();
+
+                            if (transactionService.isPasswordValid(account.getUserCpf(), password)) {
+                                transactionService.withdraw(account, amount);
+                                System.out.println("Withdrawal successful. New balance: " + account.getBalance());
+                            } else {
+                                System.out.println("Invalid password. Withdrawal cancelled.");
+                            }
                         } catch (NumberFormatException e) {
                             System.out.println("Invalid amount. Please enter a valid number.");
                         } catch (IllegalArgumentException e) {
@@ -377,12 +386,34 @@ public class App {
                     case 4 -> {
                         System.out.print("Enter the destination account number: ");
                         String targetAccountNumber = scanner.nextLine();
-                        System.out.print("Enter the amount to transfer: ");
                         try {
-                            double amount = Double.parseDouble(scanner.nextLine());
                             Account targetAccount = accountService.getAccountByNumber(targetAccountNumber);
-                            transactionService.transfer(account, targetAccount, amount);
-                            System.out.println("Transfer successful. New balance: " + account.getBalance());
+
+                            String recipientCpf = targetAccount.getUserCpf();
+                            User recipientUser = userService.getUserByCpf(recipientCpf)
+                                    .orElseThrow(() -> new IllegalArgumentException("Account not found."));
+                            String recipientName = recipientUser.getName();
+
+                            System.out.println("Account: " + recipientName);
+                            System.out.print("Do you confirm the transfer to this person? (y/n): ");
+                            String confirmation = scanner.nextLine().toLowerCase();
+
+                            if (confirmation.equals("y")) {
+                                System.out.print("Enter the amount to transfer: ");
+                                double amount = Double.parseDouble(scanner.nextLine());
+
+                                System.out.print("Enter your password: ");
+                                String password = scanner.nextLine();
+
+                                if (!transactionService.isPasswordValid(account.getUserCpf(), password)) {
+                                    System.out.println("Invalid password. Transfer cancelled.");
+                                } else {
+                                    transactionService.transfer(account, targetAccount, amount, recipientName);
+                                    System.out.println("Transfer successful. New balance: " + account.getBalance());
+                                }
+                            } else {
+                                System.out.println("Transfer cancelled.");
+                            }
                         } catch (NumberFormatException e) {
                             System.out.println("Invalid amount. Please enter a valid number.");
                         } catch (IllegalArgumentException e) {
@@ -392,8 +423,13 @@ public class App {
 
                     case 5 -> {
                         System.out.println("Bank Statement:");
-                        account.getTransactionHistory().forEach(System.out::println);
+                        if (account.getTransactionHistory().isEmpty()) {
+                            System.out.println("No transactions found.");
+                        } else {
+                            account.getTransactionHistory().forEach(System.out::println);
+                        }
                     }
+
 
                     case 0 -> {
                         System.out.println("Returning to the main menu...");
