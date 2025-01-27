@@ -300,7 +300,6 @@ public class App {
 
                         loggedIn = true;
 
-                        // Chama o menu do banco e volta ao mainMenu após sair
                         bankMenu(scanner, user, account);
                     } catch (IllegalArgumentException e) {
                         System.out.println(e.getMessage());
@@ -398,6 +397,7 @@ public class App {
 
                     case 0 -> {
                         System.out.println("Returning to the main menu...");
+                        mainMenu(scanner);
                         return; 
                     }
                     default -> System.out.println("Invalid option! Please try again.");
