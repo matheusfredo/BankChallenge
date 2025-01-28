@@ -35,51 +35,69 @@ public class TransactionRepository {
     }
 
     public List<String> getTransactionHistory(Long accountNumber) {
-        String sql = "SELECT * FROM transactions WHERE source_account = ? OR target_account = ? ORDER BY timestamp DESC";
+        String sql = """
+        SELECT t.*, 
+               u_source.name AS source_name, 
+               u_target.name AS target_name 
+        FROM transactions t
+        LEFT JOIN accounts a_source ON t.source_account = a_source.account_number
+        LEFT JOIN users u_source ON a_source.user_id = u_source.id
+        LEFT JOIN accounts a_target ON t.target_account = a_target.account_number
+        LEFT JOIN users u_target ON a_target.user_id = u_target.id
+        WHERE t.source_account = ? OR t.target_account = ?
+        ORDER BY t.timestamp DESC
+    """;
+
         List<String> history = new ArrayList<>();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"); 
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setLong(1, accountNumber);
             stmt.setLong(2, accountNumber);
             ResultSet rs = stmt.executeQuery();
+
             while (rs.next()) {
                 Long sourceAccount = rs.getLong("source_account");
                 Long targetAccount = rs.getLong("target_account");
+                String sourceName = rs.getString("source_name");
+                String targetName = rs.getString("target_name");
                 String description = rs.getString("description");
                 String formattedTimestamp = rs.getTimestamp("timestamp").toLocalDateTime().format(formatter);
+                double amount = rs.getDouble("amount");
 
-                if (description.equalsIgnoreCase("Deposit")) {
+                if ("Deposit".equalsIgnoreCase(description)) {
                     history.add(String.format(
-                        "%-19s %-15s %-10.2f %-30s",
-                        formattedTimestamp,
-                        "Deposit",
-                        rs.getDouble("amount"),
-                        ""
+                            "%-19s %-15s %-10.2f %-30s",
+                            formattedTimestamp,
+                            "Deposit",
+                            amount,
+                            ""
                     ));
-                } else if (description.equalsIgnoreCase("Withdrawal")) {
+                } else if ("Withdrawal".equalsIgnoreCase(description)) {
                     history.add(String.format(
-                        "%-19s %-15s %-10.2f %-30s",
-                        formattedTimestamp,
-                        "Withdrawal",
-                        rs.getDouble("amount"),
-                        ""
+                            "%-19s %-15s %-10.2f %-30s",
+                            formattedTimestamp,
+                            "Withdrawal",
+                            amount,
+                            ""
                     ));
                 } else if (sourceAccount.equals(accountNumber)) {
                     history.add(String.format(
-                        "%-19s %-15s %-10.2f %-30s",
-                        formattedTimestamp,
-                        "Transferred",
-                        rs.getDouble("amount"),
-                        String.format("To: %d", targetAccount)
+                            "%-19s %-15s %-10.2f To: %d - %s",
+                            formattedTimestamp,
+                            "Transferred",
+                            amount,
+                            targetAccount,
+                            targetName != null ? targetName : "Unknown"
                     ));
                 } else if (targetAccount.equals(accountNumber)) {
                     history.add(String.format(
-                        "%-19s %-15s %-10.2f %-30s",
-                        formattedTimestamp,
-                        "Received",
-                        rs.getDouble("amount"),
-                        String.format("From: %d", sourceAccount)
+                            "%-19s %-15s %-10.2f From: %d - %s",
+                            formattedTimestamp,
+                            "Received",
+                            amount,
+                            sourceAccount,
+                            sourceName != null ? sourceName : "Unknown"
                     ));
                 }
             }
@@ -88,6 +106,7 @@ public class TransactionRepository {
         }
         return history;
     }
+
 
 
 

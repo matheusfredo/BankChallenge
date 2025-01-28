@@ -171,6 +171,27 @@ public class App {
             String targetAccountNumber = scanner.nextLine();
             Account targetAccount = accountService.getAccountByNumber(targetAccountNumber);
 
+            if (targetAccount == null) {
+                System.out.println("Target account not found. Transfer cancelled.");
+                return;
+            }
+
+            // Obtém o nome do destinatário
+            String recipientCpf = targetAccount.getUserCpf();
+            String recipientName = userService.getUserByCpf(recipientCpf)
+                    .map(User::getName)
+                    .orElse("Unknown");
+
+            // Exibe o destinatário e pede confirmação
+            System.out.println("Person: " + recipientName);
+            System.out.print("Do you confirm the transfer to this person? (y/n): ");
+            String confirmation = scanner.nextLine().toLowerCase();
+
+            if (!confirmation.equals("y")) {
+                System.out.println("Transfer cancelled. Returning to the bank menu...");
+                return; // Retorna para o menu sem fazer a transferência
+            }
+
             System.out.print("Enter the amount to transfer: ");
             double amount = Double.parseDouble(scanner.nextLine());
 
@@ -178,8 +199,8 @@ public class App {
             String password = scanner.nextLine();
 
             if (transactionService.isPasswordValid(user.getCpf(), password)) {
-                transactionService.transfer(account, targetAccount, amount, targetAccount.getUserCpf());
-                System.out.println("Transfer successful. New balance: " + account.getBalance());
+                transactionService.transfer(account, targetAccount, amount);
+                System.out.println("Transfer successful to " + recipientName + ". New balance: " + account.getBalance());
             } else {
                 System.out.println("Invalid password. Transfer cancelled.");
             }
@@ -188,18 +209,21 @@ public class App {
         }
     }
 
+
     private static void showBankStatement(Account account, TransactionService transactionService) {
         System.out.println("\n========== Bank Statement ==========");
         List<String> history = transactionService.getTransactionHistory(account.getAccountNumber());
         if (history.isEmpty()) {
             System.out.println("No transactions found.");
         } else {
-            System.out.printf("%-25s %-10s %-10s %-10s%n", "Timestamp", "Type", "Amount", "Details");
+            System.out.printf("%-25s %-10s %-10s %-30s%n", "Timestamp", "Type", "Amount", "Details");
             System.out.println("------------------------------------------------------------");
             history.forEach(System.out::println);
         }
         System.out.println("=====================================\n");
     }
+
+
     
     private static String selectAccountType(Scanner scanner) {
         String accountType = "";
@@ -246,6 +270,19 @@ public class App {
 
         scanner.nextLine();
 
+        while (cpf.isEmpty()) {
+            System.out.print("Enter CPF (numbers only): ");
+            cpf = scanner.nextLine().replaceAll("[^0-9]", "");
+
+            if (!ValidationUtils.isValidCpf(cpf)) {
+                System.out.println("Invalid CPF. Please enter a valid CPF.");
+                cpf = "";
+            } else if (userService.isCpfRegistered(cpf)) {
+                System.out.println("A user with this CPF already exists. Returning to the main menu...");
+                return; // Retorna imediatamente ao menu principal se o CPF já estiver cadastrado
+            }
+        }
+
         while (!confirmed) {
             while (name.isEmpty()) {
                 System.out.print("Enter Name: ");
@@ -261,14 +298,6 @@ public class App {
                 if (!ValidationUtils.isValidBirthDate(birthDate)) {
                     System.out.println("Invalid birth date. You must be at least 18 years old.");
                     birthDate = "";
-                }
-            }
-            while (cpf.isEmpty()) {
-                System.out.print("Enter CPF (numbers only): ");
-                cpf = scanner.nextLine().replaceAll("[^0-9]", "");
-                if (!ValidationUtils.isValidCpf(cpf)) {
-                    System.out.println("Invalid CPF. Please enter a valid CPF.");
-                    cpf = "";
                 }
             }
             while (phone.isEmpty()) {
@@ -306,6 +335,7 @@ public class App {
             }
         }
 
+        // Solicitação da senha
         while (true) {
             System.out.print("Enter a 6-digit password (numbers only, no repeated digits): ");
             password = scanner.nextLine().replaceAll("[^0-9]", "");
@@ -323,22 +353,20 @@ public class App {
             }
         }
 
-        User user = new User(name, cpf, LocalDate.parse(birthDate, DateTimeFormatter.ofPattern("dd-MM-yyyy")), phone, password);
+        try {
+            User user = new User(name, cpf, LocalDate.parse(birthDate, DateTimeFormatter.ofPattern("dd-MM-yyyy")), phone, password);
+            userService.registerUser(user);
 
-        if (!userService.registerUser(user)) {
-            System.out.println("A user with this CPF already exists. Returning to the main menu...");
-            return;
+            String accountType = selectAccountType(scanner);
+            Account account = accountService.openAccount(cpf, accountType);
+
+            System.out.println("\nAccount created successfully!");
+            System.out.println("Use your CPF to log in: " + cpf);
+            System.out.println("Account ID: " + account.getAccountNumber());
+            System.out.println("Account Type: " + account.getAccountType());
+        } catch (Exception e) {
+            System.out.println("An error occurred while creating the account: " + e.getMessage());
+            System.out.println("Returning to the main menu...");
         }
-
-        String accountType = selectAccountType(scanner);
-        
-        
-
-        Account account = accountService.openAccount(cpf, accountType);
-
-        System.out.println("\nAccount created successfully!");
-        System.out.println("Use your CPF to log in: " + cpf);
-        System.out.println("Account ID: " + account.getAccountNumber());
-        System.out.println("Account Type: " + account.getAccountType());
     }
 }

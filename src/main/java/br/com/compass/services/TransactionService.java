@@ -61,8 +61,7 @@ public class TransactionService {
 
         accountRepository.updateAccountBalance(account);
     }
-
-    public void transfer(Account sourceAccount, Account targetAccount, double amount, String targetUserName) {
+    public void transfer(Account sourceAccount, Account targetAccount, double amount) {
         if (targetAccount == null) {
             throw new IllegalArgumentException("Target account does not exist.");
         }
@@ -77,17 +76,22 @@ public class TransactionService {
         targetAccount.setBalance(targetAccount.getBalance().add(BigDecimal.valueOf(amount)));
 
         LocalDateTime timestamp = LocalDateTime.now();
+        String targetUserName = userRepository.findByCpf(targetAccount.getUserCpf())
+                .map(user -> user.getName())
+                .orElse("Unknown");
+
         transactionRepository.saveTransaction(
-            timestamp,
-            amount,
-            String.format("Transferred %.2f from %d to %d | %s", amount, sourceAccount.getAccountNumber(), targetAccount.getAccountNumber(), targetUserName),
-            sourceAccount.getAccountNumber(),
-            targetAccount.getAccountNumber()
+                timestamp,
+                amount,
+                "Transfer",
+                sourceAccount.getAccountNumber(),
+                targetAccount.getAccountNumber()
         );
 
         accountRepository.updateAccountBalance(sourceAccount);
         accountRepository.updateAccountBalance(targetAccount);
     }
+
 
     public boolean isPasswordValid(String cpf, String password) {
         return userRepository.findByCpf(cpf)
