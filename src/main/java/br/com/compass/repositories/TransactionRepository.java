@@ -50,7 +50,6 @@ public class TransactionRepository {
                 String formattedTimestamp = rs.getTimestamp("timestamp").toLocalDateTime().format(formatter);
 
                 if (description.equalsIgnoreCase("Deposit")) {
-                    // Transação de depósito
                     history.add(String.format(
                         "%-19s %-15s %-10.2f %-30s",
                         formattedTimestamp,
@@ -59,7 +58,6 @@ public class TransactionRepository {
                         ""
                     ));
                 } else if (description.equalsIgnoreCase("Withdrawal")) {
-                    // Transação de saque
                     history.add(String.format(
                         "%-19s %-15s %-10.2f %-30s",
                         formattedTimestamp,
@@ -68,7 +66,6 @@ public class TransactionRepository {
                         ""
                     ));
                 } else if (sourceAccount.equals(accountNumber)) {
-                    // Transação enviada
                     history.add(String.format(
                         "%-19s %-15s %-10.2f %-30s",
                         formattedTimestamp,
@@ -77,7 +74,6 @@ public class TransactionRepository {
                         String.format("To: %d", targetAccount)
                     ));
                 } else if (targetAccount.equals(accountNumber)) {
-                    // Transação recebida
                     history.add(String.format(
                         "%-19s %-15s %-10.2f %-30s",
                         formattedTimestamp,

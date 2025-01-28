@@ -73,11 +73,9 @@ public class TransactionService {
             throw new IllegalArgumentException("Insufficient balance.");
         }
 
-        // Atualizar os saldos das contas
         sourceAccount.setBalance(sourceAccount.getBalance().subtract(BigDecimal.valueOf(amount)));
         targetAccount.setBalance(targetAccount.getBalance().add(BigDecimal.valueOf(amount)));
 
-        // Registrar uma única transação no banco
         LocalDateTime timestamp = LocalDateTime.now();
         transactionRepository.saveTransaction(
             timestamp,
@@ -87,7 +85,6 @@ public class TransactionService {
             targetAccount.getAccountNumber()
         );
 
-        // Persistir os novos saldos no banco
         accountRepository.updateAccountBalance(sourceAccount);
         accountRepository.updateAccountBalance(targetAccount);
     }

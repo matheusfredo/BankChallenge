@@ -5,8 +5,6 @@ import java.util.Scanner;
 import java.sql.Connection;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
-
 import br.com.compass.database.DatabaseConnection;
 import br.com.compass.models.Account;
 import br.com.compass.models.User;
@@ -16,30 +14,28 @@ import br.com.compass.repositories.UserRepository;
 import br.com.compass.services.AccountService;
 import br.com.compass.services.TransactionService;
 import br.com.compass.services.UserService;
+import br.com.compass.utils.ValidationUtils;
 
 public class App {
-	public static void main(String[] args) {
-	    try (Connection connection = DatabaseConnection.getConnection()) {
-	        Scanner scanner = new Scanner(System.in);
+    public static void main(String[] args) {
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            Scanner scanner = new Scanner(System.in);
 
-	        UserRepository userRepository = new UserRepository(connection);
-	        AccountRepository accountRepository = new AccountRepository(connection);
-	        TransactionRepository transactionRepository = new TransactionRepository(connection);
+            UserRepository userRepository = new UserRepository(connection);
+            AccountRepository accountRepository = new AccountRepository(connection);
+            TransactionRepository transactionRepository = new TransactionRepository(connection);
 
-	        UserService userService = new UserService(userRepository);
-	        AccountService accountService = new AccountService(accountRepository, userRepository);
-	        TransactionService transactionService = new TransactionService(accountRepository, userRepository, transactionRepository);
+            UserService userService = new UserService(userRepository);
+            AccountService accountService = new AccountService(accountRepository, userRepository);
+            TransactionService transactionService = new TransactionService(accountRepository, userRepository, transactionRepository);
 
-
-	        mainMenu(scanner, userService, accountService, transactionService);
-	        scanner.nextLine(); 
-
-	        scanner.close();
-	    } catch (Exception e) {
-	        e.printStackTrace();
-	    }
-	}
-
+            mainMenu(scanner, userService, accountService, transactionService);
+            scanner.nextLine(); 
+            scanner.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
     public static void mainMenu(Scanner scanner, UserService userService, AccountService accountService, TransactionService transactionService) {
         boolean running = true;
@@ -55,237 +51,16 @@ public class App {
             int option = scanner.nextInt();
 
             switch (option) {
-                case 1:
-                	 login(scanner, userService, accountService, transactionService);
-                case 2:
-                	accountOpening(scanner, userService, accountService);
-                    System.out.println("\nAccount Opening.\n");
+                case 1 -> login(scanner, userService, accountService, transactionService);
+                case 2 -> accountOpening(scanner, userService, accountService);
+                case 0 -> {
+                    System.exit(0);
                     break;
-                case 0:
-                	System.exit(0);
-                    break;
-                default:
-                    System.out.println("Invalid option! Please try again.");
-            }
-        }
-    }
-
-    
-    public static void accountOpening(Scanner scanner, UserService userService, AccountService accountService) {
-        System.out.println("\n========= Account Opening =========");
-
-        String name = "", birthDate = "", cpf = "", phone = "", password = "";
-        boolean confirmed = false;
-
-        scanner.nextLine(); 
-
-        while (!confirmed) {
-            name = validateName(scanner, name);
-            birthDate = validateBirthDate(scanner, birthDate);
-            cpf = validateCpf(scanner, cpf);
-            phone = validatePhone(scanner, phone);
-
-            System.out.println("\nReview your details:");
-            System.out.println("1. Name: " + name);
-            System.out.println("2. Birth Date: " + birthDate);
-            System.out.println("3. CPF: " + cpf);
-            System.out.println("4. Phone: " + phone);
-            System.out.print("Are these details correct? (s/n): ");
-            String choice = scanner.nextLine().toLowerCase();
-
-            if (choice.equals("s")) {
-                confirmed = true; 
-            } else if (choice.equals("n")) {
-                System.out.print("Enter the number of the field you want to edit (1-4): ");
-                int field = scanner.nextInt();
-                scanner.nextLine(); 
-                switch (field) {
-                    case 1 -> name = "";
-                    case 2 -> birthDate = "";
-                    case 3 -> cpf = "";
-                    case 4 -> phone = "";
-                    default -> System.out.println("Invalid option. Returning to review...");
                 }
-            } else {
-                System.out.println("Invalid input. Returning to review...");
+                default -> System.out.println("Invalid option! Please try again.");
             }
-        }
-
-        while (true) {
-            System.out.print("Enter a 6-digit password (numbers only, no repeated digits): ");
-            password = scanner.nextLine().replaceAll("[^0-9]", ""); 
-            if (password.length() != 6 || hasRepeatedDigits(password)) {
-                System.out.println("Invalid password. It must be 6 digits with no repeated numbers.");
-                continue;
-            }
-
-            System.out.print("Confirm your password: ");
-            String confirmPassword = scanner.nextLine().replaceAll("[^0-9]", "");
-            if (!password.equals(confirmPassword)) {
-                System.out.println("Passwords do not match. Please try again.");
-            } else {
-                break;
-            }
-        }
-        
-        
-        User user = new User(name, cpf, LocalDate.parse(birthDate, DateTimeFormatter.ofPattern("dd-MM-yyyy")), phone, password);
-        
-        if (!userService.registerUser(user)) {
-            System.out.println("A user with this CPF already exists. Returning to the main menu...");
-            return;
-        };
-
-        String accountType = selectAccountType(scanner);
-
-        Account account = accountService.openAccount(cpf, accountType);
-
-        System.out.println("\nAccount created successfully!");
-        System.out.println("Use your CPF to log in: " + cpf);
-        System.out.println("Account ID: " + account.getAccountNumber());
-        System.out.println("Account Type: " + account.getAccountType());
-    }
-
-
-    private static String validateName(Scanner scanner, String name) {
-        while (name.isEmpty()) {
-            System.out.print("Enter Name: ");
-            name = scanner.nextLine().trim();
-            if (name.isEmpty()) {
-                System.out.println("Name is required. Please enter a valid name.");
-            } else if (!name.matches("^[a-zA-Z\\s]+$")) {
-                System.out.println("Name must not contain numbers. Please enter a valid name.");
-                name = "";
-            } else if (name.length() < 2 || name.length() > 100) {
-                System.out.println("Name must be between 2 and 100 characters.");
-                name = "";
-            }
-        }
-        return name;
-    }
-
-    private static String validateBirthDate(Scanner scanner, String birthDate) {
-        while (birthDate.isEmpty()) {
-            System.out.print("Enter Birth Date (dd-mm-yyyy): ");
-            birthDate = scanner.nextLine().trim();
-            try {
-                LocalDate date = LocalDate.parse(birthDate, DateTimeFormatter.ofPattern("dd-MM-yyyy"));
-                LocalDate today = LocalDate.now();
-                if (date.isBefore(LocalDate.of(1900, 1, 1)) || date.isAfter(today.minusYears(18))) {
-                    System.out.println("You must be at least 18 years old to open an account.");
-                    birthDate = "";
-                }
-            } catch (DateTimeParseException e) {
-                System.out.println("Invalid date format. Please enter the date as dd-mm-yyyy.");
-                birthDate = "";
-            }
-        }
-        return birthDate;
-    }
-
-    private static String validateCpf(Scanner scanner, String cpf) {
-        while (cpf.isEmpty()) {
-            System.out.print("Enter CPF (numbers only): ");
-            cpf = scanner.nextLine().replaceAll("[^0-9]", ""); 
-            if (!isValidCpf(cpf)) {
-                System.out.println("Invalid CPF. Please enter a valid CPF.");
-                cpf = "";
-            }
-        }
-        return cpf;
-    }
-
-    private static String validatePhone(Scanner scanner, String phone) {
-        while (phone.isEmpty()) {
-            System.out.print("Enter Phone (DDD + 9 digits): ");
-            phone = scanner.nextLine().replaceAll("[^0-9]", ""); 
-            if (phone.length() != 11) {
-                System.out.println("Phone number must contain exactly 11 digits.");
-                phone = "";
-            }
-        }
-        return phone;
-    }
-
-    private static String selectAccountType(Scanner scanner) {
-        String accountType = "";
-        while (true) {
-            System.out.println("\nChoose Account Type:");
-            System.out.println("1. Checking Account");
-            System.out.println("2. Salary Account");
-            System.out.println("3. Savings Account");
-            System.out.print("Enter option (1-3): ");
-            int accountOption = scanner.nextInt();
-            scanner.nextLine();
-
-            switch (accountOption) {
-                case 1 -> accountType = "Checking Account";
-                case 2 -> accountType = "Salary Account";
-                case 3 -> accountType = "Savings Account";
-                default -> {
-                    System.out.println("Invalid option. Please select a valid account type.");
-                    continue;
-                }
-            }
-
-            System.out.println("You selected: " + accountType);
-            System.out.print("Do you confirm this account type? (s/n): ");
-            String confirmation = scanner.nextLine().toLowerCase();
-
-            if (confirmation.equals("s")) {
-                break; 
-            } else if (confirmation.equals("n")) {
-                System.out.println("Let's choose the account type again.");
-            } else {
-                System.out.println("Invalid input. Returning to account type selection.");
-            }
-        }
-        return accountType;
-    }
-
-    
-    private static boolean isValidCpf(String cpf) {
-        if (cpf.length() != 11 || cpf.matches("(\\d)\\1{10}")) {
-            return false;
-        }
-
-        try {
-            int sum = 0;
-            for (int i = 0; i < 9; i++) {
-                sum += (cpf.charAt(i) - '0') * (10 - i);
-            }
-            int firstDigit = 11 - (sum % 11);
-            if (firstDigit >= 10) {
-                firstDigit = 0;
-            }
-            if (firstDigit != (cpf.charAt(9) - '0')) {
-                return false;
-            }
-            sum = 0;
-            for (int i = 0; i < 10; i++) {
-                sum += (cpf.charAt(i) - '0') * (11 - i);
-            }
-            int secondDigit = 11 - (sum % 11);
-            if (secondDigit >= 10) {
-                secondDigit = 0;
-            }
-            return secondDigit == (cpf.charAt(10) - '0');
-        } catch (Exception e) {
-            return false;
         }
     }
-    
-    private static boolean hasRepeatedDigits(String password) {
-        for (int i = 0; i < password.length(); i++) {
-            for (int j = i + 1; j < password.length(); j++) {
-                if (password.charAt(i) == password.charAt(j)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
 
     public static void login(Scanner scanner, UserService userService, AccountService accountService, TransactionService transactionService) {
         scanner.nextLine(); 
@@ -336,7 +111,7 @@ public class App {
         }
     }
 
-    public static void bankMenu(Scanner scanner, User user, Account account,UserService userService, AccountService accountService, TransactionService transactionService) {
+    public static void bankMenu(Scanner scanner, User user, Account account, UserService userService, AccountService accountService, TransactionService transactionService) {
         boolean running = true;
 
         while (running) {
@@ -356,95 +131,31 @@ public class App {
                 switch (option) {
                     case 1 -> {
                         System.out.print("Enter the amount to deposit: ");
-                        try {
-                            double amount = Double.parseDouble(scanner.nextLine());
-                            transactionService.deposit(account, amount);
-                            System.out.println("Deposit successful. New balance: " + account.getBalance());
-                        } catch (NumberFormatException e) {
-                            System.out.println("Invalid amount. Please enter a valid number.");
-                        } catch (IllegalArgumentException e) {
-                            System.out.println(e.getMessage());
-                        }
+                        double amount = Double.parseDouble(scanner.nextLine());
+                        transactionService.deposit(account, amount);
+                        System.out.println("Deposit successful. New balance: " + account.getBalance());
                     }
-
                     case 2 -> {
                         System.out.print("Enter the amount to withdraw: ");
-                        try {
-                            double amount = Double.parseDouble(scanner.nextLine());
+                        double amount = Double.parseDouble(scanner.nextLine());
 
-                            System.out.print("Enter your password: ");
-                            String password = scanner.nextLine();
+                        System.out.print("Enter your password: ");
+                        String password = scanner.nextLine();
 
-                            if (transactionService.isPasswordValid(user.getCpf(), password)) {
-                                transactionService.withdraw(account, amount);
-                                System.out.println("Withdrawal successful. New balance: " + account.getBalance());
-                            } else {
-                                System.out.println("Invalid password. Withdrawal cancelled.");
-                            }
-                        } catch (NumberFormatException e) {
-                            System.out.println("Invalid amount. Please enter a valid number.");
-                        } catch (IllegalArgumentException e) {
-                            System.out.println(e.getMessage());
-                        }
-                    }
-
-                    case 3 -> System.out.println("Your balance is: " + account.getBalance());
-
-                    case 4 -> {
-                        System.out.print("Enter the destination account number: ");
-                        try {
-                            String targetAccountNumber = scanner.nextLine();
-
-                            Account targetAccount = accountService.getAccountByNumber(targetAccountNumber);
-                            String recipientCpf = targetAccount.getUserCpf();
-                            User recipientUser = userService.getUserByCpf(recipientCpf).orElseThrow(() -> new IllegalArgumentException("Account not found."));
-                            String recipientName = recipientUser.getName();
-
-                            System.out.println("Account: " + recipientName);
-                            System.out.print("Do you confirm the transfer to this person? (y/n): ");
-                            String confirmation = scanner.nextLine().toLowerCase();
-
-                            if (confirmation.equals("y")) {
-                                System.out.print("Enter the amount to transfer: ");
-                                double amount = Double.parseDouble(scanner.nextLine());
-
-                                System.out.print("Enter your password: ");
-                                String password = scanner.nextLine();
-
-                                if (transactionService.isPasswordValid(user.getCpf(), password)) {
-                                    transactionService.transfer(account, targetAccount, amount, recipientName);
-                                    System.out.println("Transfer successful. New balance: " + account.getBalance());
-                                } else {
-                                    System.out.println("Invalid password. Transfer cancelled.");
-                                }
-                            } else {
-                                System.out.println("Transfer cancelled.");
-                            }
-                        } catch (NumberFormatException e) {
-                            System.out.println("Invalid amount. Please enter a valid number.");
-                        } catch (IllegalArgumentException e) {
-                            System.out.println(e.getMessage());
-                        }
-                    }
-
-
-                    case 5 -> {
-                        System.out.println("\n========== Bank Statement ==========");
-                        List<String> history = transactionService.getTransactionHistory(account.getAccountNumber());
-                        if (history.isEmpty()) {
-                            System.out.println("No transactions found.");
+                        if (transactionService.isPasswordValid(user.getCpf(), password)) {
+                            transactionService.withdraw(account, amount);
+                            System.out.println("Withdrawal successful. New balance: " + account.getBalance());
                         } else {
-                            System.out.printf("%-25s %-10s %-10s %-10s%n", "Timestamp", "Type", "Amount", "Details");
-                            System.out.println("------------------------------------------------------------");
-                            history.forEach(System.out::println);
+                            System.out.println("Invalid password. Withdrawal cancelled.");
                         }
-                        System.out.println("=====================================\n");
                     }
-
+                    case 3 -> System.out.println("Your balance is: " + account.getBalance());
+                    case 4 -> handleTransfer(scanner, user, account, userService, accountService, transactionService);
+                    case 5 -> showBankStatement(account, transactionService);
                     case 0 -> {
                         System.out.println("Returning to the main menu...");
                         mainMenu(scanner, userService, accountService, transactionService);
-                        return; 
+                        return;
                     }
                     default -> System.out.println("Invalid option! Please try again.");
                 }
@@ -454,4 +165,180 @@ public class App {
         }
     }
 
+    private static void handleTransfer(Scanner scanner, User user, Account account, UserService userService, AccountService accountService, TransactionService transactionService) {
+        try {
+            System.out.print("Enter the destination account number: ");
+            String targetAccountNumber = scanner.nextLine();
+            Account targetAccount = accountService.getAccountByNumber(targetAccountNumber);
+
+            System.out.print("Enter the amount to transfer: ");
+            double amount = Double.parseDouble(scanner.nextLine());
+
+            System.out.print("Enter your password: ");
+            String password = scanner.nextLine();
+
+            if (transactionService.isPasswordValid(user.getCpf(), password)) {
+                transactionService.transfer(account, targetAccount, amount, targetAccount.getUserCpf());
+                System.out.println("Transfer successful. New balance: " + account.getBalance());
+            } else {
+                System.out.println("Invalid password. Transfer cancelled.");
+            }
+        } catch (Exception e) {
+            System.out.println("An error occurred during the transfer: " + e.getMessage());
+        }
+    }
+
+    private static void showBankStatement(Account account, TransactionService transactionService) {
+        System.out.println("\n========== Bank Statement ==========");
+        List<String> history = transactionService.getTransactionHistory(account.getAccountNumber());
+        if (history.isEmpty()) {
+            System.out.println("No transactions found.");
+        } else {
+            System.out.printf("%-25s %-10s %-10s %-10s%n", "Timestamp", "Type", "Amount", "Details");
+            System.out.println("------------------------------------------------------------");
+            history.forEach(System.out::println);
+        }
+        System.out.println("=====================================\n");
+    }
+    
+    private static String selectAccountType(Scanner scanner) {
+        String accountType = "";
+        while (true) {
+            System.out.println("\nChoose Account Type:");
+            System.out.println("1. Checking Account");
+            System.out.println("2. Salary Account");
+            System.out.println("3. Savings Account");
+            System.out.print("Enter option (1-3): ");
+            int accountOption = scanner.nextInt();
+            scanner.nextLine();
+
+            switch (accountOption) {
+                case 1 -> accountType = "Checking Account";
+                case 2 -> accountType = "Salary Account";
+                case 3 -> accountType = "Savings Account";
+                default -> {
+                    System.out.println("Invalid option. Please select a valid account type.");
+                    continue;
+                }
+            }
+
+            System.out.println("You selected: " + accountType);
+            System.out.print("Do you confirm this account type? (s/n): ");
+            String confirmation = scanner.nextLine().toLowerCase();
+
+            if (confirmation.equals("s")) {
+                break; 
+            } else if (confirmation.equals("n")) {
+                System.out.println("Let's choose the account type again.");
+            } else {
+                System.out.println("Invalid input. Returning to account type selection.");
+            }
+        }
+        return accountType;
+    }
+
+
+    public static void accountOpening(Scanner scanner, UserService userService, AccountService accountService) {
+        System.out.println("\n========= Account Opening =========");
+
+        String name = "", birthDate = "", cpf = "", phone = "", password = "";
+        boolean confirmed = false;
+
+        scanner.nextLine();
+
+        while (!confirmed) {
+            while (name.isEmpty()) {
+                System.out.print("Enter Name: ");
+                name = scanner.nextLine().trim();
+                if (!ValidationUtils.isValidName(name)) {
+                    System.out.println("Invalid name. Please enter a valid name with letters only (2-100 characters).");
+                    name = "";
+                }
+            }
+            while (birthDate.isEmpty()) {
+                System.out.print("Enter Birth Date (dd-mm-yyyy): ");
+                birthDate = scanner.nextLine().trim();
+                if (!ValidationUtils.isValidBirthDate(birthDate)) {
+                    System.out.println("Invalid birth date. You must be at least 18 years old.");
+                    birthDate = "";
+                }
+            }
+            while (cpf.isEmpty()) {
+                System.out.print("Enter CPF (numbers only): ");
+                cpf = scanner.nextLine().replaceAll("[^0-9]", "");
+                if (!ValidationUtils.isValidCpf(cpf)) {
+                    System.out.println("Invalid CPF. Please enter a valid CPF.");
+                    cpf = "";
+                }
+            }
+            while (phone.isEmpty()) {
+                System.out.print("Enter Phone (DDD + 9 digits): ");
+                phone = scanner.nextLine().replaceAll("[^0-9]", "");
+                if (!ValidationUtils.isValidPhone(phone)) {
+                    System.out.println("Invalid phone number. Please enter a valid 11-digit phone number.");
+                    phone = "";
+                }
+            }
+
+            System.out.println("\nReview your details:");
+            System.out.println("1. Name: " + name);
+            System.out.println("2. Birth Date: " + birthDate);
+            System.out.println("3. CPF: " + cpf);
+            System.out.println("4. Phone: " + phone);
+            System.out.print("Are these details correct? (s/n): ");
+            String choice = scanner.nextLine().toLowerCase();
+
+            if (choice.equals("s")) {
+                confirmed = true;
+            } else if (choice.equals("n")) {
+                System.out.print("Enter the number of the field you want to edit (1-4): ");
+                int field = scanner.nextInt();
+                scanner.nextLine();
+                switch (field) {
+                    case 1 -> name = "";
+                    case 2 -> birthDate = "";
+                    case 3 -> cpf = "";
+                    case 4 -> phone = "";
+                    default -> System.out.println("Invalid option. Returning to review...");
+                }
+            } else {
+                System.out.println("Invalid input. Returning to review...");
+            }
+        }
+
+        while (true) {
+            System.out.print("Enter a 6-digit password (numbers only, no repeated digits): ");
+            password = scanner.nextLine().replaceAll("[^0-9]", "");
+            if (password.length() != 6 || ValidationUtils.hasRepeatedDigits(password)) {
+                System.out.println("Invalid password. It must be 6 digits with no repeated numbers.");
+                continue;
+            }
+
+            System.out.print("Confirm your password: ");
+            String confirmPassword = scanner.nextLine().replaceAll("[^0-9]", "");
+            if (!password.equals(confirmPassword)) {
+                System.out.println("Passwords do not match. Please try again.");
+            } else {
+                break;
+            }
+        }
+
+        User user = new User(name, cpf, LocalDate.parse(birthDate, DateTimeFormatter.ofPattern("dd-MM-yyyy")), phone, password);
+
+        if (!userService.registerUser(user)) {
+            System.out.println("A user with this CPF already exists. Returning to the main menu...");
+            return;
+        }
+
+        String accountType = selectAccountType(scanner);
+        
+        
+
+        Account account = accountService.openAccount(cpf, accountType);
+
+        System.out.println("\nAccount created successfully!");
+        System.out.println("Use your CPF to log in: " + cpf);
+        System.out.println("Account ID: " + account.getAccountNumber());
+        System.out.println("Account Type: " + account.getAccountType());
+    }
 }
