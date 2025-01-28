@@ -10,13 +10,21 @@ public class User {
     private String phone;
     private String password;
 
-    public User(Long id, String name, String cpf, LocalDate birthDate, String phone) {
-        super();
-        this.id = id;
+    public User(long i, String name, String cpf, LocalDate birthDate, String phone, String password) {
+        this.id = i;
         this.name = name;
         this.cpf = cpf;
         this.birthDate = birthDate;
         this.phone = phone;
+        this.password = password;
+    }
+    
+    public User(String name, String cpf, LocalDate birthDate, String phone, String password) {
+        this.name = name;
+        this.cpf = cpf;
+        this.birthDate = birthDate;
+        this.phone = phone;
+        this.password = password;
     }
 
     public Long getId() {

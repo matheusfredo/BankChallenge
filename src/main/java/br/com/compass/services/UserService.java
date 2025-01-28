@@ -6,28 +6,42 @@ import br.com.compass.repositories.UserRepository;
 import java.util.Optional;
 
 public class UserService {
-    private static UserRepository userRepository = UserRepository.getInstance();
+    private UserRepository userRepository;
+
+    public UserService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
     public Optional<User> getUserByCpf(String cpf) {
         return userRepository.findByCpf(cpf);
     }
 
     public boolean registerUser(User user) {
-        if (isCpfRegistered(user.getCpf())) {
-            return false; 
+        try {
+            userRepository.save(user);
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
         }
-
-        userRepository.save(user);
-        return true; 
     }
+
 
     public boolean isCpfRegistered(String cpf) {
-        return userRepository.findByCpf(cpf).isPresent(); 
+        return userRepository.findByCpf(cpf).isPresent();
+    }
+    
+    public boolean updateUserPassword(String cpf, String newPassword) {
+        Optional<User> optionalUser = userRepository.findByCpf(cpf);
+        if (optionalUser.isPresent()) {
+            User user = optionalUser.get();
+            user.setPassword(newPassword); 
+            userRepository.update(user);  
+            return true;
+        }
+        return false; 
     }
 
-    public static UserRepository getUserRepository() {
-        return userRepository;
-    }
 
     public boolean isPasswordValid(String cpf, String password) {
         return userRepository.findByCpf(cpf)

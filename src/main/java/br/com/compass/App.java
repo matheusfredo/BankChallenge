@@ -1,28 +1,47 @@
 package br.com.compass;
 
+import java.util.List;
 import java.util.Scanner;
+import java.sql.Connection;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 
+import br.com.compass.database.DatabaseConnection;
 import br.com.compass.models.Account;
 import br.com.compass.models.User;
+import br.com.compass.repositories.AccountRepository;
+import br.com.compass.repositories.TransactionRepository;
+import br.com.compass.repositories.UserRepository;
 import br.com.compass.services.AccountService;
 import br.com.compass.services.TransactionService;
 import br.com.compass.services.UserService;
 
 public class App {
-    
-    public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
+	public static void main(String[] args) {
+	    try (Connection connection = DatabaseConnection.getConnection()) {
+	        Scanner scanner = new Scanner(System.in);
 
-        mainMenu(scanner);
-        
-        scanner.close();
-        System.out.println("Application closed");
-    }
+	        UserRepository userRepository = new UserRepository(connection);
+	        AccountRepository accountRepository = new AccountRepository(connection);
+	        TransactionRepository transactionRepository = new TransactionRepository(connection);
 
-    public static void mainMenu(Scanner scanner) {
+	        UserService userService = new UserService(userRepository);
+	        AccountService accountService = new AccountService(accountRepository, userRepository);
+	        TransactionService transactionService = new TransactionService(accountRepository, userRepository, transactionRepository);
+
+
+	        mainMenu(scanner, userService, accountService, transactionService);
+	        scanner.nextLine(); 
+
+	        scanner.close();
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	    }
+	}
+
+
+    public static void mainMenu(Scanner scanner, UserService userService, AccountService accountService, TransactionService transactionService) {
         boolean running = true;
 
         while (running) {
@@ -37,13 +56,13 @@ public class App {
 
             switch (option) {
                 case 1:
-                	 login(scanner);
+                	 login(scanner, userService, accountService, transactionService);
                 case 2:
-                	accountOpening(scanner);
+                	accountOpening(scanner, userService, accountService);
                     System.out.println("\nAccount Opening.\n");
                     break;
                 case 0:
-                    running = false;
+                	System.exit(0);
                     break;
                 default:
                     System.out.println("Invalid option! Please try again.");
@@ -52,10 +71,7 @@ public class App {
     }
 
     
-    public static void accountOpening(Scanner scanner) {
-        UserService userService = new UserService();
-        AccountService accountService = new AccountService();
-
+    public static void accountOpening(Scanner scanner, UserService userService, AccountService accountService) {
         System.out.println("\n========= Account Opening =========");
 
         String name = "", birthDate = "", cpf = "", phone = "", password = "";
@@ -64,13 +80,9 @@ public class App {
         scanner.nextLine(); 
 
         while (!confirmed) {
-            
             name = validateName(scanner, name);
-
             birthDate = validateBirthDate(scanner, birthDate);
-
             cpf = validateCpf(scanner, cpf);
-
             phone = validatePhone(scanner, phone);
 
             System.out.println("\nReview your details:");
@@ -99,13 +111,6 @@ public class App {
             }
         }
 
-        User user = new User(null, name, cpf, LocalDate.parse(birthDate, DateTimeFormatter.ofPattern("dd-MM-yyyy")), phone);
-
-        if (!userService.registerUser(user)) {
-            System.out.println("A user with this CPF already exists. Returning to the main menu...");
-            return;
-        }
-
         while (true) {
             System.out.print("Enter a 6-digit password (numbers only, no repeated digits): ");
             password = scanner.nextLine().replaceAll("[^0-9]", ""); 
@@ -122,8 +127,14 @@ public class App {
                 break;
             }
         }
-
-        user.setPassword(password);
+        
+        
+        User user = new User(name, cpf, LocalDate.parse(birthDate, DateTimeFormatter.ofPattern("dd-MM-yyyy")), phone, password);
+        
+        if (!userService.registerUser(user)) {
+            System.out.println("A user with this CPF already exists. Returning to the main menu...");
+            return;
+        };
 
         String accountType = selectAccountType(scanner);
 
@@ -133,17 +144,6 @@ public class App {
         System.out.println("Use your CPF to log in: " + cpf);
         System.out.println("Account ID: " + account.getAccountNumber());
         System.out.println("Account Type: " + account.getAccountType());
-    }	
-    
-    private static boolean hasRepeatedDigits(String password) {
-        for (int i = 0; i < password.length(); i++) {
-            for (int j = i + 1; j < password.length(); j++) {
-                if (password.charAt(i) == password.charAt(j)) {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
 
@@ -274,10 +274,20 @@ public class App {
             return false;
         }
     }
+    
+    private static boolean hasRepeatedDigits(String password) {
+        for (int i = 0; i < password.length(); i++) {
+            for (int j = i + 1; j < password.length(); j++) {
+                if (password.charAt(i) == password.charAt(j)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 
-    public static void login(Scanner scanner) {
-        UserService userService = new UserService();
-        AccountService accountService = new AccountService();
+
+    public static void login(Scanner scanner, UserService userService, AccountService accountService, TransactionService transactionService) {
         scanner.nextLine(); 
 
         boolean loggedIn = false;
@@ -300,7 +310,7 @@ public class App {
 
                         loggedIn = true;
 
-                        bankMenu(scanner, user, account);
+                        bankMenu(scanner, user, account, userService, accountService, transactionService);
                     } catch (IllegalArgumentException e) {
                         System.out.println(e.getMessage());
                         System.out.println("Returning to the main menu...");
@@ -326,10 +336,7 @@ public class App {
         }
     }
 
-    public static void bankMenu(Scanner scanner, User user, Account account) {
-    	AccountService accountService = new AccountService();
-        TransactionService transactionService = new TransactionService(); 
-        UserService userService = new UserService();
+    public static void bankMenu(Scanner scanner, User user, Account account,UserService userService, AccountService accountService, TransactionService transactionService) {
         boolean running = true;
 
         while (running) {
@@ -360,15 +367,15 @@ public class App {
                         }
                     }
 
-                    case 2 -> { 
+                    case 2 -> {
                         System.out.print("Enter the amount to withdraw: ");
                         try {
                             double amount = Double.parseDouble(scanner.nextLine());
-                            
+
                             System.out.print("Enter your password: ");
                             String password = scanner.nextLine();
 
-                            if (transactionService.isPasswordValid(account.getUserCpf(), password)) {
+                            if (transactionService.isPasswordValid(user.getCpf(), password)) {
                                 transactionService.withdraw(account, amount);
                                 System.out.println("Withdrawal successful. New balance: " + account.getBalance());
                             } else {
@@ -385,13 +392,12 @@ public class App {
 
                     case 4 -> {
                         System.out.print("Enter the destination account number: ");
-                        String targetAccountNumber = scanner.nextLine();
                         try {
-                            Account targetAccount = accountService.getAccountByNumber(targetAccountNumber);
+                            String targetAccountNumber = scanner.nextLine();
 
+                            Account targetAccount = accountService.getAccountByNumber(targetAccountNumber);
                             String recipientCpf = targetAccount.getUserCpf();
-                            User recipientUser = userService.getUserByCpf(recipientCpf)
-                                    .orElseThrow(() -> new IllegalArgumentException("Account not found."));
+                            User recipientUser = userService.getUserByCpf(recipientCpf).orElseThrow(() -> new IllegalArgumentException("Account not found."));
                             String recipientName = recipientUser.getName();
 
                             System.out.println("Account: " + recipientName);
@@ -405,11 +411,11 @@ public class App {
                                 System.out.print("Enter your password: ");
                                 String password = scanner.nextLine();
 
-                                if (!transactionService.isPasswordValid(account.getUserCpf(), password)) {
-                                    System.out.println("Invalid password. Transfer cancelled.");
-                                } else {
+                                if (transactionService.isPasswordValid(user.getCpf(), password)) {
                                     transactionService.transfer(account, targetAccount, amount, recipientName);
                                     System.out.println("Transfer successful. New balance: " + account.getBalance());
+                                } else {
+                                    System.out.println("Invalid password. Transfer cancelled.");
                                 }
                             } else {
                                 System.out.println("Transfer cancelled.");
@@ -421,19 +427,23 @@ public class App {
                         }
                     }
 
+
                     case 5 -> {
-                        System.out.println("Bank Statement:");
-                        if (account.getTransactionHistory().isEmpty()) {
+                        System.out.println("\n========== Bank Statement ==========");
+                        List<String> history = transactionService.getTransactionHistory(account.getAccountNumber());
+                        if (history.isEmpty()) {
                             System.out.println("No transactions found.");
                         } else {
-                            account.getTransactionHistory().forEach(System.out::println);
+                            System.out.printf("%-25s %-10s %-10s %-10s%n", "Timestamp", "Type", "Amount", "Details");
+                            System.out.println("------------------------------------------------------------");
+                            history.forEach(System.out::println);
                         }
+                        System.out.println("=====================================\n");
                     }
-
 
                     case 0 -> {
                         System.out.println("Returning to the main menu...");
-                        mainMenu(scanner);
+                        mainMenu(scanner, userService, accountService, transactionService);
                         return; 
                     }
                     default -> System.out.println("Invalid option! Please try again.");

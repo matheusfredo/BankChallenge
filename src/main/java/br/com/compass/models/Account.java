@@ -10,17 +10,16 @@ public class Account {
     private String accountType;
     private BigDecimal balance;
     private String userCpf;
-    private List<String> transactionHistory; // Histórico de transações
+    private List<String> transactionHistory; 
 
     public Account(Long accountNumber, String accountType, BigDecimal balance, String userCpf) {
         this.accountNumber = accountNumber;
-        this.accountType = accountType;
-        this.balance = balance;
+        setAccountType(accountType);
+        setBalance(balance);
         this.userCpf = userCpf;
-        this.transactionHistory = new ArrayList<>(); // Inicializa o histórico
+        this.transactionHistory = new ArrayList<>();
     }
 
-    // Getters e setters
     public Long getAccountNumber() {
         return accountNumber;
     }
@@ -34,6 +33,10 @@ public class Account {
     }
 
     public void setAccountType(String accountType) {
+        List<String> validTypes = List.of("Checking Account", "Salary Account", "Savings Account");
+        if (!validTypes.contains(accountType)) {
+            throw new IllegalArgumentException("Invalid account type. Must be one of: " + validTypes);
+        }
         this.accountType = accountType;
     }
 
@@ -42,6 +45,9 @@ public class Account {
     }
 
     public void setBalance(BigDecimal balance) {
+        if (balance.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Balance cannot be negative.");
+        }
         this.balance = balance;
     }
 
@@ -58,6 +64,20 @@ public class Account {
     }
 
     public void addTransaction(String transaction) {
-        this.transactionHistory.add(transaction);
+        if (transactionHistory.size() >= 1000) {
+            transactionHistory.remove(0);
+        }
+        String timestamp = LocalDateTime.now().toString(); 
+        this.transactionHistory.add(timestamp + " - " + transaction);
+    }
+
+    @Override
+    public String toString() {
+        return "Account{" +
+                "accountNumber=" + accountNumber +
+                ", accountType='" + accountType + '\'' +
+                ", balance=" + balance +
+                ", userCpf='" + userCpf + '\'' +
+                '}';
     }
 }

@@ -5,12 +5,15 @@ import br.com.compass.repositories.AccountRepository;
 import br.com.compass.repositories.UserRepository;
 
 import java.math.BigDecimal;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class AccountService {
-    private static AtomicLong accountNumberGenerator = new AtomicLong(1000L);
-    private AccountRepository accountRepository = AccountRepository.getInstance();
-    private UserRepository userRepository = UserService.getUserRepository();
+    private AccountRepository accountRepository;
+    private UserRepository userRepository;
+
+    public AccountService(AccountRepository accountRepository, UserRepository userRepository) {
+        this.accountRepository = accountRepository;
+        this.userRepository = userRepository;
+    }
 
     public Account getAccountByCpf(String cpf) {
         return accountRepository.findByUserCpf(cpf)
@@ -32,8 +35,9 @@ public class AccountService {
             throw new IllegalArgumentException("User not found. Please register first.");
         }
 
-        Long accountNumber = accountNumberGenerator.getAndIncrement();
+        Long accountNumber = System.currentTimeMillis(); 
         Account account = new Account(accountNumber, accountType, BigDecimal.ZERO, userCpf);
+
         accountRepository.save(account);
 
         return account;
